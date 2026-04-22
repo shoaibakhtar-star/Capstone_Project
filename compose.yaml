@@ -20,3 +20,21 @@ services:
       - mysql
     ports:
       - "${FASTAPI_PORT}:8000"
+
+  django:
+    build: ./backend/python-django
+    container_name: django
+    env_file: .env
+    depends_on:
+      - mysql
+    ports:
+      - "8001:8001"
+
+
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - fastapi

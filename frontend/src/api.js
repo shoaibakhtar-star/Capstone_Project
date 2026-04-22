@@ -1,4 +1,6 @@
-const API = "http://localhost:8000";
+const API = "http://localhost:8000"; // fastApi
+
+const API = "http://localhost:8001"; // django
 
 export const registerUser = async (data) => {
   const res = await fetch(`${API}/auth/register`, {

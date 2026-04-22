@@ -1,0 +1,8 @@
+Django
+PyMySQL
+python-dotenv
+django-cors-headers
+
+# Optional (only if you actually use JWT/auth in Django)
+passlib[bcrypt]
+python-jose

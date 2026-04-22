@@ -1,5 +1,8 @@
+# ---------------- IMPORTS ----------------
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.middleware.cors import CORSMiddleware
+
 from pydantic import BaseModel
 import mysql.connector
 import os
@@ -8,46 +11,86 @@ from passlib.context import CryptContext
 from jose import jwt
 from datetime import datetime, timedelta
 
-# Load environment variables
+
+# ---------------- LOAD ENV ----------------
+# Loads variables from root .env file
 load_dotenv()
+
+
+# ---------------- CREATE APP ----------------
+# IMPORTANT: Create app ONLY ONCE
 app = FastAPI()
+
+# ---------------- CORS MIDDLEWARE ----------------
+# Allows frontend (React/Vite) to talk to backend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # For development (later restrict)
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow GET, POST, OPTIONS etc.
+    allow_headers=["*"],
+)
+
+
+# ---------------- SECURITY ----------------
+# Used for protected routes (JWT token)
 security = HTTPBearer()
 
-# ---------------- Config ----------------
+
+# ---------------- DATABASE CONFIG ----------------
+# Reads DB config from .env (shared across all backends)
 db_config = {
-    "host": os.getenv("DB_HOST"),
+    "host": os.getenv("DB_HOST"),        # mysql (docker service name)
     "user": os.getenv("DB_USER"),
     "password": os.getenv("DB_PASSWORD"),
     "database": os.getenv("DB_NAME"),
 }
 
+
+# ---------------- JWT CONFIG ----------------
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
 
+
+# ---------------- PASSWORD HASHING ----------------
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
-# ---------------- Schema (for docs + validation) ----------------
+# ---------------- REQUEST SCHEMA ----------------
+# Used for request validation + Swagger docs
 class User(BaseModel):
     username: str
     password: str
 
 
-# ---------------- DB ----------------
+# ---------------- DATABASE CONNECTION ----------------
 def get_db():
+    """
+    Creates a new DB connection
+    """
     return mysql.connector.connect(**db_config)
 
 
-# ---------------- Auth Utils ----------------
+# ---------------- AUTH UTILS ----------------
 def hash_password(password):
+    """
+    Hash password before storing
+    bcrypt max length = 72 chars
+    """
     return pwd_context.hash(password[:72])
 
 
 def verify_password(password, hashed):
+    """
+    Verify password during login
+    """
     return pwd_context.verify(password[:72], hashed)
 
 
 def create_token(user_id):
+    """
+    Create JWT token
+    """
     payload = {
         "user_id": user_id,
         "exp": datetime.utcnow() + timedelta(minutes=30)
@@ -55,10 +98,13 @@ def create_token(user_id):
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
-# ---------------- Routes ----------------
+# ---------------- ROUTES ----------------
 
 @app.get("/health")
 def health():
+    """
+    Health check endpoint (used in DevOps / monitoring)
+    """
     try:
         db = get_db()
         db.close()
@@ -69,18 +115,18 @@ def health():
 
 @app.post("/auth/register")
 def register(user: User):
+    """
+    Register new user
+    """
     db = get_db()
     cursor = db.cursor()
 
-    username = user.username
-    password = user.password
-
-    hashed_password = hash_password(password)
+    hashed_password = hash_password(user.password)
 
     try:
         cursor.execute(
             "INSERT INTO users (username, password) VALUES (%s, %s)",
-            (username, hashed_password),
+            (user.username, hashed_password),
         )
         db.commit()
         return {"message": "User registered"}
@@ -90,6 +136,9 @@ def register(user: User):
 
 @app.post("/auth/login")
 def login(user: User):
+    """
+    Login user and return JWT token
+    """
     db = get_db()
     cursor = db.cursor()
 
@@ -114,6 +163,9 @@ def login(user: User):
 
 @app.get("/auth/profile")
 def profile(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """
+    Protected route → requires JWT token
+    """
     token = credentials.credentials
 
     try:
