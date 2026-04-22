@@ -1,0 +1,22 @@
+
+services:
+
+  mysql:
+    image: mysql:8
+    container_name: mysql
+    env_file: .env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${MYSQL_PORT}:3306"
+    volumes:
+      - ./mysql-init:/docker-entrypoint-initdb.d
+
+  fastapi:
+    build: ./backend/python-fastapi
+    container_name: fastapi
+    env_file: .env
+    depends_on:
+      - mysql
+    ports:
+      - "${FASTAPI_PORT}:8000"
