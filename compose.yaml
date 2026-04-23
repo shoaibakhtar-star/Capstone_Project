@@ -3,21 +3,30 @@ services:
 
   mysql:
     image: mysql:8
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     container_name: mysql
+    restart: always
     env_file: .env
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
     ports:
       - "${MYSQL_PORT}:3306"
     volumes:
       - ./mysql-init:/docker-entrypoint-initdb.d
-
+      - mysql_data:/var/lib/mysql
+ 
   fastapi:
     build: ./backend/python-fastapi
     container_name: fastapi
     env_file: .env
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
     ports:
       - "${FASTAPI_PORT}:8000"
 
@@ -26,10 +35,33 @@ services:
     container_name: django
     env_file: .env
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
     ports:
       - "8001:8001"
 
+
+  node-app:
+    build: ./backend/backend-node
+    container_name: node-app
+    restart: always
+    env_file: .env
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "8002:8002"
+
+  dotnet:
+      build: ./backend/backend-dotnet
+      container_name: dotnet
+      restart: always
+      env_file: .env
+      depends_on:
+        mysql:
+          condition: service_healthy
+      ports:
+        - "8003:8003"
 
   frontend:
     build: ./frontend
@@ -38,3 +70,9 @@ services:
       - "5173:5173"
     depends_on:
       - fastapi
+      - django
+      - node-app
+
+
+volumes:
+  mysql_data:

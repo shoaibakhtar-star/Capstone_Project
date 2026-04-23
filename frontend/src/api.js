@@ -1,6 +1,12 @@
-const API = "http://localhost:8000"; // fastApi
+// const API = "http://localhost:8000"; // fastApi
 
-const API = "http://localhost:8001"; // django
+// const API = "http://localhost:8001"; // django
+
+const API = "http://localhost:8002"; // nodejs
+
+// const API = "http://localhost:8003"; // .net
+
+
 
 export const registerUser = async (data) => {
   const res = await fetch(`${API}/auth/register`, {
