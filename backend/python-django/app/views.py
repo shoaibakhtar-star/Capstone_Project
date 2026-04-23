@@ -1,5 +1,7 @@
 import json
 import os
+import mysql.connector   # ✅ ADD THIS
+
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from dotenv import load_dotenv

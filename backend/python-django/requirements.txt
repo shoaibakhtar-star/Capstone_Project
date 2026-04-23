@@ -1,8 +1,13 @@
 Django
 PyMySQL
 python-dotenv
-django-cors-headers
 
 # Optional (only if you actually use JWT/auth in Django)
-passlib[bcrypt]
+passlib[bcrypt]==1.7.4
+bcrypt==3.2.2
 python-jose
+
+Django==6.0.4
+djangorestframework==3.16.0
+django-cors-headers==4.7.0
+mysql-connector-python==9.3.0
