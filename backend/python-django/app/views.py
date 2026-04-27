@@ -5,13 +5,10 @@ import mysql.connector   # ✅ ADD THIS
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from dotenv import load_dotenv
-from passlib.context import CryptContext
 from jose import jwt
 from datetime import datetime, timedelta
 
 load_dotenv()
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 db_config = {
     "host": os.getenv("DB_HOST"),
@@ -28,14 +25,6 @@ def get_db():
     return mysql.connector.connect(**db_config)
 
 
-def hash_password(password):
-    return pwd_context.hash(password[:72])
-
-
-def verify_password(password, hashed):
-    return pwd_context.verify(password[:72], hashed)
-
-
 def create_token(user_id):
     payload = {
         "user_id": user_id,
@@ -47,7 +36,12 @@ def create_token(user_id):
 # ---------------- ROUTES ----------------
 
 def health(request):
-    return JsonResponse({"status": "healthy django"})
+    try:
+        db = get_db()
+        db.close()
+        return JsonResponse({"status": "healthy django"})
+    except:
+        return JsonResponse({"status": "unhealthy django"}, status=503)
 
 
 @csrf_exempt
@@ -63,7 +57,7 @@ def register(request):
     try:
         cursor.execute(
             "INSERT INTO users (username, password) VALUES (%s, %s)",
-            (data["username"], hash_password(data["password"]))
+            (data["username"], data["password"])
         )
         db.commit()
         return JsonResponse({"message": "User registered"})
@@ -90,9 +84,9 @@ def login(request):
     if not result:
         return JsonResponse({"detail": "Invalid credentials"}, status=401)
 
-    user_id, hashed_password = result
+    user_id, stored_password = result
 
-    if not verify_password(data["password"], hashed_password):
+    if data["password"] != stored_password:
         return JsonResponse({"detail": "Invalid credentials"}, status=401)
 
     token = create_token(user_id)

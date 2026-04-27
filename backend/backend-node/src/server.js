@@ -1,11 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const pool = require("./db");
-const {
-  hashPassword,
-  verifyPassword,
-  createToken,
-} = require("./auth");
+const { createToken } = require("./auth");
 const authMiddleware = require("./middleware");
 
 require("dotenv").config();
@@ -34,7 +30,7 @@ app.get("/health", async (req, res) => {
     await pool.query("SELECT 1");
     res.json({ status: "healthy nodejs" });
   } catch {
-    res.json({ status: "unhealthy nodejs" });
+    res.status(503).json({ status: "unhealthy nodejs" });
   }
 });
 
@@ -43,11 +39,9 @@ app.post("/auth/register", async (req, res) => {
   const { username, password } = req.body;
 
   try {
-    const hashed = await hashPassword(password);
-
     await pool.query(
       "INSERT INTO users (username, password) VALUES (?, ?)",
-      [username, hashed]
+      [username, password]
     );
 
     res.json({ message: "User registered" });
@@ -71,9 +65,7 @@ app.post("/auth/login", async (req, res) => {
 
   const user = rows[0];
 
-  const isValid = await verifyPassword(password, user.password);
-
-  if (!isValid) {
+  if (password !== user.password) {
     return res.status(401).json({ message: "Invalid credentials" });
   }
 

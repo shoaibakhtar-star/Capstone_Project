@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using MySql.Data.MySqlClient;
+using MySqlConnector;
 using Dapper;
 using DotNetEnv;
 
@@ -120,9 +120,10 @@ app.MapGet("/health", async () =>
         await db.OpenAsync();
         return Results.Ok(new { status = "healthy dotnet" });
     }
-    catch
+    catch (Exception ex)
     {
-        return Results.Ok(new { status = "unhealthy dotnet" });
+        Console.WriteLine($"DB Connection Failed. ConnStr: {connectionString} | Error: {ex.Message}");
+        return Results.Json(new { status = "unhealthy dotnet", error = ex.Message }, statusCode: 503);
     }
 });
 
@@ -131,13 +132,11 @@ app.MapPost("/auth/register", async (User user) =>
 {
     using var db = new MySqlConnection(connectionString);
 
-    var hashed = BCrypt.Net.BCrypt.HashPassword(user.Password);
-
     try
     {
         await db.ExecuteAsync(
             "INSERT INTO users (username, password) VALUES (@Username, @Password)",
-            new { Username = user.Username, Password = hashed }
+            new { Username = user.Username, Password = user.Password }
         );
 
         return Results.Ok(new { message = "User registered" });
@@ -161,9 +160,7 @@ app.MapPost("/auth/login", async (User user) =>
     if (result == null)
         return Results.Unauthorized();
 
-    bool valid = BCrypt.Net.BCrypt.Verify(user.Password, result.password);
-
-    if (!valid)
+    if (user.Password != result.password)
         return Results.Unauthorized();
 
     var token = CreateToken((int)result.id, SECRET_KEY);

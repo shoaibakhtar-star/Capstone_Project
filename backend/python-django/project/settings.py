@@ -78,7 +78,7 @@ DATABASES = {
 # CORS — allow all origins (same as FastAPI allow_origins=["*"])
 # ---------------------------------------------------------------------------
 CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_CREDENTIALS = False
 
 # ---------------------------------------------------------------------------
 # Django REST Framework

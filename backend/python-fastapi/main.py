@@ -2,12 +2,12 @@
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from pydantic import BaseModel
 import mysql.connector
 import os
 from dotenv import load_dotenv
-from passlib.context import CryptContext
 from jose import jwt
 from datetime import datetime, timedelta
 
@@ -26,7 +26,7 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # For development (later restrict)
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],  # Allow GET, POST, OPTIONS etc.
     allow_headers=["*"],
 )
@@ -52,10 +52,6 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
 
 
-# ---------------- PASSWORD HASHING ----------------
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-
 # ---------------- REQUEST SCHEMA ----------------
 # Used for request validation + Swagger docs
 class User(BaseModel):
@@ -72,19 +68,6 @@ def get_db():
 
 
 # ---------------- AUTH UTILS ----------------
-def hash_password(password):
-    """
-    Hash password before storing
-    bcrypt max length = 72 chars
-    """
-    return pwd_context.hash(password[:72])
-
-
-def verify_password(password, hashed):
-    """
-    Verify password during login
-    """
-    return pwd_context.verify(password[:72], hashed)
 
 
 def create_token(user_id):
@@ -110,55 +93,47 @@ def health():
         db.close()
         return {"status": "healthy fastapi"}
     except:
-        return {"status": "unhealthy fastapi"}
+        return JSONResponse(content={"status": "unhealthy fastapi"}, status_code=503)
 
 
 @app.post("/auth/register")
 def register(user: User):
-    """
-    Register new user
-    """
     db = get_db()
     cursor = db.cursor()
-
-    hashed_password = hash_password(user.password)
-
     try:
         cursor.execute(
             "INSERT INTO users (username, password) VALUES (%s, %s)",
-            (user.username, hashed_password),
+            (user.username, user.password),
         )
         db.commit()
         return {"message": "User registered"}
     except mysql.connector.Error:
+        db.rollback()
         raise HTTPException(status_code=400, detail="User already exists")
-
+    finally:
+        cursor.close()
+        db.close()
 
 @app.post("/auth/login")
 def login(user: User):
-    """
-    Login user and return JWT token
-    """
     db = get_db()
     cursor = db.cursor()
-
-    cursor.execute(
-        "SELECT id, password FROM users WHERE username = %s",
-        (user.username,)
-    )
-    result = cursor.fetchone()
-
-    if not result:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-
-    user_id, hashed_password = result
-
-    if not verify_password(user.password, hashed_password):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-
-    token = create_token(user_id)
-
-    return {"access_token": token}
+    try:
+        cursor.execute(
+            "SELECT id, password FROM users WHERE username = %s",
+            (user.username,)
+        )
+        result = cursor.fetchone()
+        if not result:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        user_id, stored_password = result
+        if user.password != stored_password:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        token = create_token(user_id)
+        return {"access_token": token}
+    finally:
+        cursor.close()
+        db.close()
 
 
 @app.get("/auth/profile")
