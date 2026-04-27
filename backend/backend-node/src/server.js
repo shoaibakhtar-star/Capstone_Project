@@ -32,9 +32,9 @@ app.use((req, res, next) => {
 app.get("/health", async (req, res) => {
   try {
     await pool.query("SELECT 1");
-    res.json({ status: "healthy" });
+    res.json({ status: "healthy nodejs" });
   } catch {
-    res.json({ status: "unhealthy" });
+    res.json({ status: "unhealthy nodejs" });
   }
 });
 

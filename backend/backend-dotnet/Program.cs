@@ -118,11 +118,11 @@ app.MapGet("/health", async () =>
     {
         using var db = new MySqlConnection(connectionString);
         await db.OpenAsync();
-        return Results.Ok(new { status = "healthy" });
+        return Results.Ok(new { status = "healthy dotnet" });
     }
     catch
     {
-        return Results.Ok(new { status = "unhealthy" });
+        return Results.Ok(new { status = "unhealthy dotnet" });
     }
 });
 

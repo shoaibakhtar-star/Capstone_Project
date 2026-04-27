@@ -108,9 +108,9 @@ def health():
     try:
         db = get_db()
         db.close()
-        return {"status": "healthy"}
+        return {"status": "healthy fastapi"}
     except:
-        return {"status": "unhealthy"}
+        return {"status": "unhealthy fastapi"}
 
 
 @app.post("/auth/register")

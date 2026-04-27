@@ -7,7 +7,9 @@
 // const API = "http://localhost:8003"; // .net
 
 
-const API = "http://localhost"; // nginx
+// const API = "http://localhost"; // nginx
+
+const API = import.meta.env.VITE_API_BASE_URL || "http://localhost";
 
 export const registerUser = async (data) => {
   const res = await fetch(`${API}/auth/register`, {

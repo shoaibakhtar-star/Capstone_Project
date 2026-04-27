@@ -47,7 +47,7 @@ def create_token(user_id):
 # ---------------- ROUTES ----------------
 
 def health(request):
-    return JsonResponse({"status": "healthy"})
+    return JsonResponse({"status": "healthy django"})
 
 
 @csrf_exempt
