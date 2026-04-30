@@ -165,50 +165,30 @@ pipeline {
         stage('Write .env on App Server') {
             steps {
                 echo "Writing .env file onto app server via SSM..."
-                sh '''
+                sh """
                     aws ssm send-command \
-                        --region $AWS_REGION \
-                        --instance-ids $APP_SERVER_ID \
+                        --region ${AWS_REGION} \
+                        --instance-ids ${APP_SERVER_ID} \
                         --document-name "AWS-RunShellScript" \
                         --comment "Write .env for build #${BUILD_NUMBER}" \
-                        --parameters commands=["bash -c 'cat > /home/ubuntu/cloud.env << ENVEOF
-DB_HOST=$DB_HOST
-DB_PORT=3306
-DB_USER=admin
-DB_PASSWORD=$DB_PASSWORD
-DB_NAME=userdb
-SECRET_KEY=$SECRET_KEY
-ALGORITHM=HS256
-FASTAPI_PORT=8000
-PORT=8002
-FRONTEND_PORT=3000
-MYSQL_PORT=3306
-ENVEOF
-echo .env written successfully'"] \
+                        --parameters '{"commands":["cat > /home/ubuntu/cloud.env << ENVEOF\\nDB_HOST=${DB_HOST}\\nDB_PORT=3306\\nDB_USER=admin\\nDB_PASSWORD=${DB_PASSWORD}\\nDB_NAME=userdb\\nSECRET_KEY=${SECRET_KEY}\\nALGORITHM=HS256\\nFASTAPI_PORT=8000\\nPORT=8002\\nFRONTEND_PORT=3000\\nMYSQL_PORT=3306\\nENVEOF"]}' \
                         --output text
-                '''
+                """
             }
         }
 
         stage('Deploy to App Server via SSM') {
             steps {
                 echo "Deploying build #${env.BUILD_NUMBER} to private EC2 via SSM..."
-                sh '''
+                sh """
                     aws ssm send-command \
-                        --region $AWS_REGION \
-                        --instance-ids $APP_SERVER_ID \
+                        --region ${AWS_REGION} \
+                        --instance-ids ${APP_SERVER_ID} \
                         --document-name "AWS-RunShellScript" \
-                        --comment "Deploy build #${BUILD_NUMBER} tag ${IMAGE_TAG}" \
-                        --parameters commands=["bash -c '
-                            cd /home/ubuntu &&
-                            aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 639914974908.dkr.ecr.ap-south-1.amazonaws.com &&
-                            docker compose -f cloud-compose.yaml pull &&
-                            docker compose -f cloud-compose.yaml up -d --remove-orphans &&
-                            docker image prune -f &&
-                            echo Deployment complete for tag ${IMAGE_TAG}
-                        '"] \
+                        --comment "Deploy build #${BUILD_NUMBER}" \
+                        --parameters '{"commands":["cd /home/ubuntu && aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 639914974908.dkr.ecr.ap-south-1.amazonaws.com && docker compose -f cloud-compose.yaml pull && docker compose -f cloud-compose.yaml up -d --remove-orphans && docker image prune -f"]}' \
                         --output text
-                '''
+                """
             }
         }
 
