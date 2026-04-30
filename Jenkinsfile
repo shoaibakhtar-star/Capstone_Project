@@ -8,7 +8,6 @@ pipeline {
         APP_SERVER_ID  = "i-09db336236d870b20"
         S3_BUCKET      = "myapp-frontend-capstone"
 
-        // Secrets from Jenkins credentials store
         DB_HOST        = credentials('DB_HOST')
         DB_PASSWORD    = credentials('DB_PASSWORD')
         SECRET_KEY     = credentials('SECRET_KEY')
@@ -30,7 +29,6 @@ pipeline {
                         script: "git rev-parse --short HEAD",
                         returnStdout: true
                     ).trim()
-                    // Tag format: buildNumber-commitHash  e.g. 42-a3f9c12
                     env.IMAGE_TAG = "${env.BUILD_NUMBER}-${env.GIT_COMMIT_SHORT}"
                     echo "==========================================="
                     echo "Build Number : ${env.BUILD_NUMBER}"
@@ -141,10 +139,6 @@ pipeline {
             steps {
                 dir('frontend') {
                     sh '''
-                        echo "Installing Node.js..."
-                        curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
-                        apt-get install -y nodejs
-
                         echo "Node version: $(node --version)"
                         echo "NPM version: $(npm --version)"
 
