@@ -93,7 +93,7 @@ def health():
         db.close()
         return {"status": "healthy Fastapi"}
     except:
-        return JSONResponse(content={"status": "unhealthy fastapi"}, status_code=503)
+        return JSONResponse(content={"status": "unhealthy Fastapi"}, status_code=503)
 
 
 @app.post("/auth/register")
