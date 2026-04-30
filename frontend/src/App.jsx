@@ -6,199 +6,111 @@ function App() {
   const [token, setToken] = useState("");
   const [message, setMessage] = useState("");
   const [profile, setProfile] = useState(null);
+  const [backend, setBackend] = useState(localStorage.getItem("backend_target") || "round-robin");
+
+  const handleBackendChange = (e) => {
+    const value = e.target.value;
+    setBackend(value);
+    localStorage.setItem("backend_target", value);
+    setMessage(`Target changed to: ${value}`);
+  };
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const register = async () => {
-    setMessage("");
-    const res = await registerUser(form);
-
-    if (res.message) {
-      setMessage("✅ User registered successfully");
-    } else {
-      setMessage("❌ " + (res.detail || "Registration failed"));
+    try {
+      setMessage("Registering...");
+      const res = await registerUser(form);
+      if (res.message) setMessage("✅ Success: " + res.message);
+      else setMessage("❌ Error: " + (res.detail || "Failed"));
+    } catch (err) {
+      setMessage("❌ Network Error - Check Console");
     }
   };
 
   const login = async () => {
-    setMessage("");
-    const res = await loginUser(form);
-
-    if (res.access_token) {
-      setToken(res.access_token);
-      setMessage("✅ Logged in successfully");
-    } else {
-      setMessage("❌ Wrong credentials");
+    try {
+      setMessage("Logging in...");
+      const res = await loginUser(form);
+      if (res.access_token) {
+        setToken(res.access_token);
+        setMessage("✅ Logged in successfully");
+      } else {
+        setMessage("❌ Wrong credentials");
+      }
+    } catch (err) {
+      setMessage("❌ Network Error");
     }
   };
 
   const fetchProfile = async () => {
-    if (!token) {
-      setMessage("❌ Please login first");
-      return;
-    }
-
-    const res = await getProfile(token);
-
-    if (res.user_id) {
+    if (!token) return setMessage("❌ Login first");
+    try {
+      const res = await getProfile(token);
       setProfile(res);
       setMessage("👤 Profile loaded");
-    } else {
-      setMessage("❌ Invalid token");
+    } catch (err) {
+      setMessage("❌ Failed to fetch profile");
     }
-  };
-
-  const logout = () => {
-    setToken("");
-    setProfile(null);
-    setMessage("👋 Logged out");
   };
 
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <h2>🔐 Auth System</h2>
+        <h2 style={{ marginBottom: "20px" }}>🔐 Auth System</h2>
 
-        {/* INPUTS */}
-        <input
-          name="username"
-          placeholder="Username"
-          onChange={handleChange}
-          style={styles.input}
-        />
-
-        <input
-          name="password"
-          type="password"
-          placeholder="Password"
-          onChange={handleChange}
-          style={styles.input}
-        />
-
-        {/* BUTTONS */}
-        <div style={styles.buttonGroup}>
-          <button onClick={register} style={styles.buttonBlue}>
-            Register
-          </button>
-          <button onClick={login} style={styles.buttonGreen}>
-            Login
-          </button>
+        {/* BACKEND SELECTOR */}
+        <div style={styles.selectorContainer}>
+          <label style={styles.label}>Route via:</label>
+          <select value={backend} onChange={handleBackendChange} style={styles.select}>
+            <option value="round-robin"> Round Robin</option>
+            <option value="fastapi"> FastAPI</option>
+            <option value="django"> Django</option>
+            <option value="node"> Node.js</option>
+            <option value="dotnet"> .NET</option>
+          </select>
         </div>
 
-        <button onClick={fetchProfile} style={styles.buttonPurple}>
-          Get Profile
-        </button>
+        <input name="username" placeholder="Username" onChange={handleChange} style={styles.input} />
+        <input name="password" type="password" placeholder="Password" onChange={handleChange} style={styles.input} />
 
-        {token && (
-          <button onClick={logout} style={styles.buttonRed}>
-            Logout
-          </button>
-        )}
+        <div style={styles.buttonGroup}>
+          <button onClick={register} style={styles.buttonBlue}>Register</button>
+          <button onClick={login} style={styles.buttonGreen}>Login</button>
+        </div>
 
-        {/* STATUS MESSAGE */}
+        <button onClick={fetchProfile} style={styles.buttonPurple}>Get Profile</button>
+
+        {token && <button onClick={() => {setToken(""); setProfile(null); setMessage("👋 Logged out")}} style={styles.buttonRed}>Logout</button>}
+
         {message && <p style={styles.message}>{message}</p>}
 
-        {/* PROFILE SECTION */}
         {profile && (
           <div style={styles.profile}>
-            <h3>👤 Profile</h3>
-            <p>User ID: {profile.user_id}</p>
+            <p>ID: {profile.user_id}</p>
           </div>
         )}
-
-        {/* LOGIN STATUS */}
-        <div style={styles.status}>
-          {token ? "🟢 Logged In" : "🔴 Not Logged In"}
-        </div>
       </div>
     </div>
   );
 }
 
-export default App;
-
 const styles = {
-  container: {
-    height: "100vh",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    background: "#0f172a",
-    color: "#fff",
-    fontFamily: "Arial",
-  },
-  card: {
-    background: "#1e293b",
-    padding: "30px",
-    borderRadius: "12px",
-    width: "300px",
-    textAlign: "center",
-    boxShadow: "0 0 20px rgba(0,0,0,0.5)",
-  },
-  input: {
-    width: "100%",
-    padding: "10px",
-    margin: "10px 0",
-    borderRadius: "6px",
-    border: "none",
-  },
-  buttonGroup: {
-    display: "flex",
-    justifyContent: "space-between",
-  },
-  buttonBlue: {
-    background: "#3b82f6",
-    color: "#fff",
-    border: "none",
-    padding: "10px",
-    borderRadius: "6px",
-    cursor: "pointer",
-    width: "48%",
-  },
-  buttonGreen: {
-    background: "#22c55e",
-    color: "#fff",
-    border: "none",
-    padding: "10px",
-    borderRadius: "6px",
-    cursor: "pointer",
-    width: "48%",
-  },
-  buttonPurple: {
-    background: "#a855f7",
-    color: "#fff",
-    border: "none",
-    padding: "10px",
-    borderRadius: "6px",
-    cursor: "pointer",
-    width: "100%",
-    marginTop: "10px",
-  },
-  buttonRed: {
-    background: "#ef4444",
-    color: "#fff",
-    border: "none",
-    padding: "10px",
-    borderRadius: "6px",
-    cursor: "pointer",
-    width: "100%",
-    marginTop: "10px",
-  },
-  message: {
-    marginTop: "10px",
-    fontSize: "14px",
-  },
-  profile: {
-    marginTop: "15px",
-    background: "#334155",
-    padding: "10px",
-    borderRadius: "6px",
-  },
-  status: {
-    marginTop: "15px",
-    fontSize: "14px",
-    opacity: 0.8,
-  },
+  container: { height: "100vh", display: "flex", justifyContent: "center", alignItems: "center", background: "#0f172a", color: "#fff", fontFamily: "sans-serif" },
+  card: { background: "#1e293b", padding: "30px", borderRadius: "12px", width: "320px", textAlign: "center", boxShadow: "0 10px 25px rgba(0,0,0,0.3)" },
+  selectorContainer: { marginBottom: "15px", textAlign: "left", background: "#334155", padding: "10px", borderRadius: "8px" },
+  label: { fontSize: "11px", color: "#94a3b8", textTransform: "uppercase", fontWeight: "bold" },
+  select: { width: "100%", background: "transparent", color: "#fff", border: "1px solid #475569", padding: "5px", borderRadius: "4px", marginTop: "5px" },
+  input: { width: "100%", padding: "10px", margin: "8px 0", borderRadius: "6px", border: "1px solid #334155", background: "#0f172a", color: "#fff", boxSizing: "border-box" },
+  buttonGroup: { display: "flex", justifyContent: "space-between", gap: "10px" },
+  buttonBlue: { background: "#3b82f6", color: "#fff", border: "none", padding: "10px", borderRadius: "6px", cursor: "pointer", flex: 1 },
+  buttonGreen: { background: "#22c55e", color: "#fff", border: "none", padding: "10px", borderRadius: "6px", cursor: "pointer", flex: 1 },
+  buttonPurple: { background: "#a855f7", color: "#fff", border: "none", padding: "10px", borderRadius: "6px", cursor: "pointer", width: "100%", marginTop: "10px" },
+  buttonRed: { background: "#ef4444", color: "#fff", border: "none", padding: "10px", borderRadius: "6px", cursor: "pointer", width: "100%", marginTop: "10px" },
+  message: { marginTop: "15px", fontSize: "13px", color: "#38bdf8" },
+  profile: { marginTop: "15px", background: "#334155", padding: "10px", borderRadius: "6px" }
 };
+
+export default App;
