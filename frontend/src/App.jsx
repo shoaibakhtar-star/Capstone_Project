@@ -65,7 +65,7 @@ function App() {
         <div style={styles.selectorContainer}>
           <label style={styles.label}>Route via:</label>
           <select value={backend} onChange={handleBackendChange} style={styles.select}>
-            <option value="round-robin"> Round Robin</option>
+            <option value="round-robin"> ROUND ROBIN</option>
             <option value="fastapi"> FastAPI</option>
             <option value="django"> Django</option>
             <option value="node"> Node.js</option>
