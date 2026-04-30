@@ -1,8 +1,8 @@
 services:
   fastapi:
-    image: 639914974908.dkr.ecr.ap-south-1.amazonaws.com/fastapi-repo:latest
+    image: 639914974908.dkr.ecr.ap-south-1.amazonaws.com/fastapi-repo:${IMAGE_TAG:-latest}
     container_name: fastapi
-    env_file: .env
+    env_file: cloud.env
     networks:
       - backend
     ports:
@@ -15,9 +15,9 @@ services:
       start_period: 20s
 
   django:
-    image: 639914974908.dkr.ecr.ap-south-1.amazonaws.com/django-repo:latest
+    image: 639914974908.dkr.ecr.ap-south-1.amazonaws.com/django-repo:${IMAGE_TAG:-latest}
     container_name: django
-    env_file: .env
+    env_file: cloud.env
     networks:
       - backend
     ports:
@@ -30,9 +30,9 @@ services:
       start_period: 20s
 
   node-app:
-    image: 639914974908.dkr.ecr.ap-south-1.amazonaws.com/node-repo:latest
+    image: 639914974908.dkr.ecr.ap-south-1.amazonaws.com/node-repo:${IMAGE_TAG:-latest}
     container_name: node-app
-    env_file: .env
+    env_file: cloud.env
     networks:
       - backend
     ports:
@@ -45,9 +45,9 @@ services:
       start_period: 20s
 
   dotnet:
-    image: 639914974908.dkr.ecr.ap-south-1.amazonaws.com/dotnet-repo:latest
+    image: 639914974908.dkr.ecr.ap-south-1.amazonaws.com/dotnet-repo:${IMAGE_TAG:-latest}
     container_name: dotnet
-    env_file: .env
+    env_file: cloud.env
     networks:
       - backend
     ports:

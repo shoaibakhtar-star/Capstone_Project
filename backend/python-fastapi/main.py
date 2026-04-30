@@ -91,7 +91,7 @@ def health():
     try:
         db = get_db()
         db.close()
-        return {"status": "healthy fastapi"}
+        return {"status": "healthy Fastapi"}
     except:
         return JSONResponse(content={"status": "unhealthy fastapi"}, status_code=503)
 
