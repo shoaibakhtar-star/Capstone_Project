@@ -164,14 +164,14 @@ pipeline {
 
         stage('Write .env on App Server') {
             steps {
-                echo "Writing .env file onto app server via SSM..."
+                echo "Writing cloud.env file onto app server via SSM..."
                 sh """
                     aws ssm send-command \
                         --region ${AWS_REGION} \
                         --instance-ids ${APP_SERVER_ID} \
                         --document-name "AWS-RunShellScript" \
                         --comment "Write .env for build #${BUILD_NUMBER}" \
-                        --parameters '{"commands":["cat > /home/ubuntu/cloud.env << ENVEOF\\nDB_HOST=${DB_HOST}\\nDB_PORT=3306\\nDB_USER=admin\\nDB_PASSWORD=${DB_PASSWORD}\\nDB_NAME=userdb\\nSECRET_KEY=${SECRET_KEY}\\nALGORITHM=HS256\\nFASTAPI_PORT=8000\\nPORT=8002\\nFRONTEND_PORT=3000\\nMYSQL_PORT=3306\\nENVEOF"]}' \
+                        --parameters '{"commands":["cat > /app/cloud.env << ENVEOF\\nDB_HOST=${DB_HOST}\\nDB_PORT=3306\\nDB_USER=admin\\nDB_PASSWORD=${DB_PASSWORD}\\nDB_NAME=userdb\\nSECRET_KEY=${SECRET_KEY}\\nALGORITHM=HS256\\nFASTAPI_PORT=8000\\nPORT=8002\\nFRONTEND_PORT=3000\\nMYSQL_PORT=3306\\nENVEOF"]}' \
                         --output text
                 """
             }
@@ -185,8 +185,23 @@ pipeline {
                         --region ${AWS_REGION} \
                         --instance-ids ${APP_SERVER_ID} \
                         --document-name "AWS-RunShellScript" \
-                        --comment "Deploy build #${BUILD_NUMBER}" \
-                        --parameters '{"commands":["cd /home/ubuntu && aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 639914974908.dkr.ecr.ap-south-1.amazonaws.com && docker compose -f cloud-compose.yaml pull && docker compose -f cloud-compose.yaml up -d --remove-orphans && docker image prune -f"]}' \
+                        --comment "Deploy build #${BUILD_NUMBER} tag ${IMAGE_TAG}" \
+                        --parameters '{"commands":[
+                            "echo === Starting deployment for tag ${IMAGE_TAG} ===",
+                            "cd /app",
+                            "echo === Logging into ECR ===",
+                            "aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 639914974908.dkr.ecr.ap-south-1.amazonaws.com",
+                            "echo === Stopping existing containers ===",
+                            "docker compose -f cloud-compose.yaml down --remove-orphans || true",
+                            "echo === Removing old images to force fresh pull ===",
+                            "docker image prune -af || true",
+                            "echo === Pulling fresh images from ECR ===",
+                            "export IMAGE_TAG=${IMAGE_TAG} && docker compose -f cloud-compose.yaml pull",
+                            "echo === Starting containers with new images ===",
+                            "export IMAGE_TAG=${IMAGE_TAG} && docker compose -f cloud-compose.yaml up -d",
+                            "echo === Deployment complete for tag ${IMAGE_TAG} ===",
+                            "docker ps"
+                        ]}' \
                         --output text
                 """
             }
