@@ -7,10 +7,7 @@ pipeline {
         ECR_REGISTRY   = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
         APP_SERVER_ID  = "i-09db336236d870b20"
         S3_BUCKET      = "myapp-frontend-capstone"
-
-        DB_HOST        = credentials('DB_HOST')
-        DB_PASSWORD    = credentials('DB_PASSWORD')
-        SECRET_KEY     = credentials('SECRET_KEY')
+        SECRET_ID      = "myapp/production/env"
     }
 
     stages {
@@ -162,16 +159,16 @@ pipeline {
             }
         }
 
-        stage('Write .env on App Server') {
+        stage('Fetch Secrets & Write .env on App Server') {
             steps {
-                echo "Writing cloud.env file onto app server via SSM..."
+                echo "Fetching secrets from AWS Secrets Manager on app server..."
                 sh """
                     aws ssm send-command \
                         --region ${AWS_REGION} \
                         --instance-ids ${APP_SERVER_ID} \
                         --document-name "AWS-RunShellScript" \
-                        --comment "Write .env for build #${BUILD_NUMBER}" \
-                        --parameters '{"commands":["cat > /app/cloud.env << ENVEOF\\nDB_HOST=${DB_HOST}\\nDB_PORT=3306\\nDB_USER=admin\\nDB_PASSWORD=${DB_PASSWORD}\\nDB_NAME=userdb\\nSECRET_KEY=${SECRET_KEY}\\nALGORITHM=HS256\\nFASTAPI_PORT=8000\\nPORT=8002\\nFRONTEND_PORT=3000\\nMYSQL_PORT=3306\\nENVEOF"]}' \
+                        --comment "Fetch secrets for build #${BUILD_NUMBER}" \
+                        --parameters '{"commands":["bash /app/fetch-secrets.sh"]}' \
                         --output text
                 """
             }
