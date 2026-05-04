@@ -91,9 +91,9 @@ def health():
     try:
         db = get_db()
         db.close()
-        return {"status": "Fastapi Is Healthy"}
+        return {"status": "Fastapi is Healthy"}
     except:
-        return JSONResponse(content={"status": "Fastapi Is Unhealthy"}, status_code=503)
+        return JSONResponse(content={"status": "Fastapi is Unhealthy"}, status_code=503)
 
 
 @app.post("/auth/register")
