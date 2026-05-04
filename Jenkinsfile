@@ -189,7 +189,7 @@ pipeline {
                             "echo === Logging into ECR ===",
                             "aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 639914974908.dkr.ecr.ap-south-1.amazonaws.com",
                             "echo === Stopping app containers only monitoring stays up ===",
-                            "docker compose -f cloud-compose.yaml down --remove-orphans || true",
+                            // "docker compose -f cloud-compose.yaml down --remove-orphans || true",
                             "echo === Removing old images to force fresh pull ===",
                             "docker image prune -af || true",
                             "echo === Pulling fresh images from ECR ===",
