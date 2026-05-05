@@ -7,10 +7,8 @@ pipeline {
         ECR_REGISTRY   = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
         APP_SERVER_ID  = "i-088695533fe29c1b3"
 
-        # SSH / SCP CONFIG
-        APP_SERVER_IP  = "YOUR_PRIVATE_IP"
+        APP_SERVER_IP  = "10.0.3.151"
         SSH_USER       = "ubuntu"
-        SSH_KEY        = "/var/lib/jenkins/.ssh/id_rsa"
 
         S3_BUCKET      = "myapp-frontend-688939571878"
         SECRET_ID      = "myapp/production/env"
@@ -119,15 +117,17 @@ pipeline {
             steps {
                 echo "Copying config files to remote server..."
 
-                sh '''
-                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no $SSH_USER@$APP_SERVER_IP "mkdir -p /app"
+                sshagent(['ec2-key']) {
+                    sh '''
+                        ssh -o StrictHostKeyChecking=no $SSH_USER@$APP_SERVER_IP "mkdir -p /app"
 
-                    scp -i $SSH_KEY -o StrictHostKeyChecking=no -r \
-                        cloud-compose.yaml \
-                        nginx.conf \
-                        monitoring \
-                        $SSH_USER@$APP_SERVER_IP:/app/
-                '''
+                        scp -o StrictHostKeyChecking=no -r \
+                            cloud-compose.yaml \
+                            nginx.conf \
+                            monitoring \
+                            $SSH_USER@$APP_SERVER_IP:/app/
+                    '''
+                }
             }
         }
 
