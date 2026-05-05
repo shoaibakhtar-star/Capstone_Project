@@ -6,6 +6,12 @@ pipeline {
         AWS_ACCOUNT_ID = "688939571878"
         ECR_REGISTRY   = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
         APP_SERVER_ID  = "i-088695533fe29c1b3"
+
+        # SSH / SCP CONFIG
+        APP_SERVER_IP  = "YOUR_PRIVATE_IP"
+        SSH_USER       = "ubuntu"
+        SSH_KEY        = "/var/lib/jenkins/.ssh/id_rsa"
+
         S3_BUCKET      = "myapp-frontend-688939571878"
         SECRET_ID      = "myapp/production/env"
     }
@@ -14,7 +20,6 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                echo "Checking out source code..."
                 checkout scm
             }
         }
@@ -26,19 +31,17 @@ pipeline {
                         script: "git rev-parse --short HEAD",
                         returnStdout: true
                     ).trim()
+
                     env.IMAGE_TAG = "${env.BUILD_NUMBER}-${env.GIT_COMMIT_SHORT}"
-                    echo "==========================================="
-                    echo "Build Number : ${env.BUILD_NUMBER}"
-                    echo "Commit Hash  : ${env.GIT_COMMIT_SHORT}"
-                    echo "Image Tag    : ${env.IMAGE_TAG}"
-                    echo "==========================================="
+
+                    echo "Build: ${env.BUILD_NUMBER}"
+                    echo "Tag  : ${env.IMAGE_TAG}"
                 }
             }
         }
 
         stage('ECR Login') {
             steps {
-                echo "Logging into Amazon ECR..."
                 sh '''
                     aws ecr get-login-password --region $AWS_REGION | \
                     docker login --username AWS --password-stdin $ECR_REGISTRY
@@ -48,47 +51,39 @@ pipeline {
 
         stage('Build Docker Images') {
             parallel {
-                stage('Build FastAPI') {
+                stage('FastAPI') {
                     steps {
                         sh '''
-                            echo "Building FastAPI image: $IMAGE_TAG"
-                            docker build \
-                                -t $ECR_REGISTRY/fastapi-repo:$IMAGE_TAG \
-                                -t $ECR_REGISTRY/fastapi-repo:latest \
-                                ./backend/python-fastapi
+                            docker build -t $ECR_REGISTRY/fastapi-repo:$IMAGE_TAG \
+                                         -t $ECR_REGISTRY/fastapi-repo:latest \
+                                         ./backend/python-fastapi
                         '''
                     }
                 }
-                stage('Build Django') {
+                stage('Django') {
                     steps {
                         sh '''
-                            echo "Building Django image: $IMAGE_TAG"
-                            docker build \
-                                -t $ECR_REGISTRY/django-repo:$IMAGE_TAG \
-                                -t $ECR_REGISTRY/django-repo:latest \
-                                ./backend/python-django
+                            docker build -t $ECR_REGISTRY/django-repo:$IMAGE_TAG \
+                                         -t $ECR_REGISTRY/django-repo:latest \
+                                         ./backend/python-django
                         '''
                     }
                 }
-                stage('Build Node') {
+                stage('Node') {
                     steps {
                         sh '''
-                            echo "Building Node image: $IMAGE_TAG"
-                            docker build \
-                                -t $ECR_REGISTRY/node-repo:$IMAGE_TAG \
-                                -t $ECR_REGISTRY/node-repo:latest \
-                                ./backend/backend-node
+                            docker build -t $ECR_REGISTRY/node-repo:$IMAGE_TAG \
+                                         -t $ECR_REGISTRY/node-repo:latest \
+                                         ./backend/backend-node
                         '''
                     }
                 }
-                stage('Build .NET') {
+                stage('.NET') {
                     steps {
                         sh '''
-                            echo "Building .NET image: $IMAGE_TAG"
-                            docker build \
-                                -t $ECR_REGISTRY/dotnet-repo:$IMAGE_TAG \
-                                -t $ECR_REGISTRY/dotnet-repo:latest \
-                                ./backend/backend-dotnet
+                            docker build -t $ECR_REGISTRY/dotnet-repo:$IMAGE_TAG \
+                                         -t $ECR_REGISTRY/dotnet-repo:latest \
+                                         ./backend/backend-dotnet
                         '''
                     }
                 }
@@ -97,38 +92,42 @@ pipeline {
 
         stage('Push Docker Images') {
             parallel {
-                stage('Push FastAPI') {
+                stage('FastAPI') {
                     steps {
-                        sh '''
-                            docker push $ECR_REGISTRY/fastapi-repo:$IMAGE_TAG
-                            docker push $ECR_REGISTRY/fastapi-repo:latest
-                        '''
+                        sh 'docker push $ECR_REGISTRY/fastapi-repo:$IMAGE_TAG && docker push $ECR_REGISTRY/fastapi-repo:latest'
                     }
                 }
-                stage('Push Django') {
+                stage('Django') {
                     steps {
-                        sh '''
-                            docker push $ECR_REGISTRY/django-repo:$IMAGE_TAG
-                            docker push $ECR_REGISTRY/django-repo:latest
-                        '''
+                        sh 'docker push $ECR_REGISTRY/django-repo:$IMAGE_TAG && docker push $ECR_REGISTRY/django-repo:latest'
                     }
                 }
-                stage('Push Node') {
+                stage('Node') {
                     steps {
-                        sh '''
-                            docker push $ECR_REGISTRY/node-repo:$IMAGE_TAG
-                            docker push $ECR_REGISTRY/node-repo:latest
-                        '''
+                        sh 'docker push $ECR_REGISTRY/node-repo:$IMAGE_TAG && docker push $ECR_REGISTRY/node-repo:latest'
                     }
                 }
-                stage('Push .NET') {
+                stage('.NET') {
                     steps {
-                        sh '''
-                            docker push $ECR_REGISTRY/dotnet-repo:$IMAGE_TAG
-                            docker push $ECR_REGISTRY/dotnet-repo:latest
-                        '''
+                        sh 'docker push $ECR_REGISTRY/dotnet-repo:$IMAGE_TAG && docker push $ECR_REGISTRY/dotnet-repo:latest'
                     }
                 }
+            }
+        }
+
+        stage('Copy Config Files via SCP') {
+            steps {
+                echo "Copying config files to remote server..."
+
+                sh '''
+                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no $SSH_USER@$APP_SERVER_IP "mkdir -p /app"
+
+                    scp -i $SSH_KEY -o StrictHostKeyChecking=no -r \
+                        cloud-compose.yaml \
+                        nginx.conf \
+                        monitoring \
+                        $SSH_USER@$APP_SERVER_IP:/app/
+                '''
             }
         }
 
@@ -136,106 +135,67 @@ pipeline {
             steps {
                 dir('frontend') {
                     sh '''
-                        echo "Node version: $(node --version)"
-                        echo "NPM version: $(npm --version)"
-
-                        echo "Building React frontend..."
                         npm ci
                         npm run build
 
-                        echo "Uploading to S3 bucket: $S3_BUCKET"
                         if [ -d "dist" ]; then
                             aws s3 sync dist/ s3://$S3_BUCKET/ --delete --region $AWS_REGION
                         elif [ -d "build" ]; then
                             aws s3 sync build/ s3://$S3_BUCKET/ --delete --region $AWS_REGION
                         else
-                            echo "ERROR: No build output directory found!"
+                            echo "No build output found"
                             exit 1
                         fi
-
-                        echo "Frontend successfully deployed to s3://$S3_BUCKET"
                     '''
                 }
             }
         }
 
-        stage('Fetch Secrets & Write .env on App Server') {
+        stage('Fetch Secrets via SSM') {
             steps {
-                echo "Fetching secrets from AWS Secrets Manager on app server..."
                 sh """
                     aws ssm send-command \
                         --region ${AWS_REGION} \
                         --instance-ids ${APP_SERVER_ID} \
                         --document-name "AWS-RunShellScript" \
-                        --comment "Fetch secrets for build #${BUILD_NUMBER}" \
                         --parameters '{"commands":["bash /app/fetch-secrets.sh"]}' \
                         --output text
                 """
             }
         }
 
-        stage('Deploy to App Server via SSM') {
+        stage('Deploy via SSM') {
             steps {
-                echo "Deploying build #${env.BUILD_NUMBER} to private EC2 via SSM..."
                 sh """
                     aws ssm send-command \
                         --region ${AWS_REGION} \
                         --instance-ids ${APP_SERVER_ID} \
                         --document-name "AWS-RunShellScript" \
-                        --comment "Deploy build #${BUILD_NUMBER} tag ${IMAGE_TAG}" \
-                        --parameters '{"commands":[
-                            "echo === Starting deployment for tag ${IMAGE_TAG} ===",
-                            "cd /app",
-                            "echo === Logging into ECR ===",
-                            "aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 639914974908.dkr.ecr.ap-south-1.amazonaws.com",
-                            "echo === Removing old images to force fresh pull ===",
-                            "docker image prune -af || true",
-                            "echo === Pulling fresh images from ECR ===",
-                            "export IMAGE_TAG=${IMAGE_TAG} && docker compose -f cloud-compose.yaml pull",
-                            "echo === Starting app containers with new images ===",
-                            "export IMAGE_TAG=${IMAGE_TAG} && docker compose -f cloud-compose.yaml up -d",
-                            "echo === Deployment complete for tag ${IMAGE_TAG} ===",
-                            "docker ps"
-                        ]}' \
+                        --parameters '{
+                            "commands":[
+                                "cd /app",
+                                "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}",
+                                "docker image prune -af || true",
+                                "export IMAGE_TAG=${IMAGE_TAG} && docker compose -f cloud-compose.yaml pull",
+                                "export IMAGE_TAG=${IMAGE_TAG} && docker compose -f cloud-compose.yaml up -d",
+                                "docker ps"
+                            ]
+                        }' \
                         --output text
                 """
             }
         }
-
     }
 
     post {
         success {
-            echo """
-            ✅ ================================
-            Pipeline SUCCESS
-            Build    : #${env.BUILD_NUMBER}
-            Tag      : ${env.IMAGE_TAG}
-            Commit   : ${env.GIT_COMMIT_SHORT}
-            S3       : s3://${S3_BUCKET}
-            ================================
-            """
+            echo "SUCCESS: Build #${env.BUILD_NUMBER} Tag ${env.IMAGE_TAG}"
         }
         failure {
-            echo """
-            ❌ ================================
-            Pipeline FAILED
-            Build    : #${env.BUILD_NUMBER}
-            Tag      : ${env.IMAGE_TAG}
-            Commit   : ${env.GIT_COMMIT_SHORT}
-            Check console output above
-            ================================
-            """
+            echo "FAILED: Build #${env.BUILD_NUMBER}"
         }
         always {
-            script {
-                try {
-                    sh 'docker image prune -f'
-                    echo "Docker cleanup done"
-                } catch (err) {
-                    echo "Cleanup skipped: ${err}"
-                }
-            }
+            sh 'docker image prune -f || true'
         }
     }
 }
