@@ -126,7 +126,6 @@ pipeline {
                             nginx.conf \
                             cloud.env \
                             monitoring \
-                            scripts \
                             $SSH_USER@$APP_SERVER_IP:/app/
                     '''
                 }
