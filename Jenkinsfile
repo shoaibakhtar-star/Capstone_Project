@@ -5,8 +5,8 @@ pipeline {
         AWS_REGION     = "ap-south-1"
         AWS_ACCOUNT_ID = "688939571878"
         ECR_REGISTRY   = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-        APP_SERVER_ID  = "i-088695533fe29c1b3"
 
+        APP_SERVER_ID  = "i-088695533fe29c1b3"
         APP_SERVER_IP  = "10.0.3.151"
         SSH_USER       = "ubuntu"
 
@@ -124,7 +124,9 @@ pipeline {
                         scp -o StrictHostKeyChecking=no -r \
                             cloud-compose.yaml \
                             nginx.conf \
+                            cloud.env \
                             monitoring \
+                            scripts \
                             $SSH_USER@$APP_SERVER_IP:/app/
                     '''
                 }
@@ -158,7 +160,7 @@ pipeline {
                         --region ${AWS_REGION} \
                         --instance-ids ${APP_SERVER_ID} \
                         --document-name "AWS-RunShellScript" \
-                        --parameters '{"commands":["bash /app/fetch-secrets.sh"]}' \
+                        --parameters '{"commands":["bash /app/scripts/fetch-secrets.sh"]}' \
                         --output text
                 """
             }
@@ -174,10 +176,15 @@ pipeline {
                         --parameters '{
                             "commands":[
                                 "cd /app",
+
                                 "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}",
+
                                 "docker image prune -af || true",
+
                                 "export IMAGE_TAG=${IMAGE_TAG} && docker compose -f cloud-compose.yaml pull",
-                                "export IMAGE_TAG=${IMAGE_TAG} && docker compose -f cloud-compose.yaml up -d",
+
+                                "export IMAGE_TAG=${IMAGE_TAG} && docker compose -f cloud-compose.yaml up -d --force-recreate --remove-orphans",
+
                                 "docker ps"
                             ]
                         }' \
