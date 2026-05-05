@@ -11,7 +11,6 @@ pipeline {
         SSH_USER       = "ubuntu"
 
         S3_BUCKET      = "myapp-frontend-688939571878"
-        SECRET_ID      = "myapp/production/env"
     }
 
     stages {
@@ -124,7 +123,7 @@ pipeline {
                         scp -o StrictHostKeyChecking=no -r \
                             cloud-compose.yaml \
                             nginx.conf \
-                            cloud.env \
+                            fetch-secrets.sh \
                             monitoring \
                             $SSH_USER@$APP_SERVER_IP:/app/
                     '''
@@ -152,19 +151,6 @@ pipeline {
             }
         }
 
-        stage('Fetch Secrets via SSM') {
-            steps {
-                sh """
-                    aws ssm send-command \
-                        --region ${AWS_REGION} \
-                        --instance-ids ${APP_SERVER_ID} \
-                        --document-name "AWS-RunShellScript" \
-                        --parameters '{"commands":["bash /app/scripts/fetch-secrets.sh"]}' \
-                        --output text
-                """
-            }
-        }
-
         stage('Deploy via SSM') {
             steps {
                 sh """
@@ -176,13 +162,19 @@ pipeline {
                             "commands":[
                                 "cd /app",
 
+                                "chmod +x fetch-secrets.sh",
+                                "./fetch-secrets.sh",
+
+                                "echo ==== VERIFY cloud.env ====",
+                                "cat cloud.env",
+
                                 "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}",
 
-                                "docker image prune -af || true",
+                                "docker compose -f cloud-compose.yaml down",
 
                                 "export IMAGE_TAG=${IMAGE_TAG} && docker compose -f cloud-compose.yaml pull",
 
-                                "export IMAGE_TAG=${IMAGE_TAG} && docker compose -f cloud-compose.yaml up -d --force-recreate --remove-orphans",
+                                "export IMAGE_TAG=${IMAGE_TAG} && docker compose -f cloud-compose.yaml up -d --remove-orphans",
 
                                 "docker ps"
                             ]
