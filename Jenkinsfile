@@ -164,6 +164,7 @@ pipeline {
 
                                 "chmod +x fetch-secrets.sh",
                                 "./fetch-secrets.sh",
+                                "echo IMAGE_TAG=${IMAGE_TAG} >> cloud.env",
 
                                 "echo ==== VERIFY cloud.env ====",
                                 "cat cloud.env",
