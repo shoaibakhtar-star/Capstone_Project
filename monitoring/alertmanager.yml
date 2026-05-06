@@ -1,0 +1,27 @@
+global:
+  resolve_timeout: 5m
+  smtp_smarthost: 'smtp.gmail.com:587'
+  smtp_from: 'shoaibakhtar7689@gmail.com'
+  smtp_auth_username: 'shoaibakhtar7689@gmail.com'
+  smtp_auth_password: 'txdrmdarywnowave'
+  smtp_require_tls: true
+ 
+route:
+  group_by: ['alertname', 'severity']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 1h
+  receiver: 'gmail-alerts'
+ 
+receivers:
+  - name: 'gmail-alerts'
+    email_configs:
+      - to: 'shoaibakhtar7689@gmail.com'
+        send_resolved: true
+ 
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'instance']
