@@ -175,7 +175,7 @@ pipeline {
 
                                 "IMAGE_TAG=${IMAGE_TAG} docker compose -f cloud-compose.yaml pull",
 
-                                "IMAGE_TAG=${IMAGE_TAG} docker compose -f cloud-compose.yaml up -d --remove-orphans",
+                                "IMAGE_TAG=${IMAGE_TAG} docker compose -f cloud-compose.yaml up -d",
 
                                 "docker ps"
                             ]
