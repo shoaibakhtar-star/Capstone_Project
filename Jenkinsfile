@@ -6,11 +6,11 @@ pipeline {
         AWS_ACCOUNT_ID = "639914974908"
         ECR_REGISTRY   = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 
-        APP_SERVER_ID  = "i-088695533fe29c1b3"
-        APP_SERVER_IP  = "10.0.3.151"
+        APP_SERVER_ID  = "i-0e6e022d11d49ba40"
+        APP_SERVER_IP  = "10.0.3.77"
         SSH_USER       = "ubuntu"
 
-        S3_BUCKET      = "myapp-frontend-688939571878"
+        S3_BUCKET      = "myapp-frontend-639914974908"
     }
 
     stages {
