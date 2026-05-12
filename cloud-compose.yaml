@@ -1,6 +1,6 @@
 services:
   fastapi:
-    image: 688939571878.dkr.ecr.ap-south-1.amazonaws.com/fastapi-repo:${IMAGE_TAG}
+    image: 639914974908.dkr.ecr.ap-south-1.amazonaws.com/fastapi-repo:${IMAGE_TAG}
     container_name: fastapi
     env_file: cloud.env
     networks:
@@ -15,7 +15,7 @@ services:
       start_period: 20s
 
   django:
-    image: 688939571878.dkr.ecr.ap-south-1.amazonaws.com/django-repo:${IMAGE_TAG}
+    image: 639914974908.dkr.ecr.ap-south-1.amazonaws.com/django-repo:${IMAGE_TAG}
     container_name: django
     env_file: cloud.env
     networks:
@@ -30,7 +30,7 @@ services:
       start_period: 20s
 
   node-app:
-    image: 688939571878.dkr.ecr.ap-south-1.amazonaws.com/node-repo:${IMAGE_TAG}
+    image: 639914974908.dkr.ecr.ap-south-1.amazonaws.com/node-repo:${IMAGE_TAG}
     container_name: node-app
     env_file: cloud.env
     networks:
@@ -45,7 +45,7 @@ services:
       start_period: 20s
 
   dotnet:
-    image: 688939571878.dkr.ecr.ap-south-1.amazonaws.com/dotnet-repo:${IMAGE_TAG}
+    image: 639914974908.dkr.ecr.ap-south-1.amazonaws.com/dotnet-repo:${IMAGE_TAG}
     container_name: dotnet
     env_file: cloud.env
     networks:
