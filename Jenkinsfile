@@ -122,6 +122,7 @@ pipeline {
 
                         scp -o StrictHostKeyChecking=no -r \
                             cloud-compose.yaml \
+                            monitoring-compose.yml \
                             nginx.conf \
                             fetch-secrets.sh \
                             monitoring \

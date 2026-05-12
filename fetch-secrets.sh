@@ -3,7 +3,7 @@
 echo "Fetching secrets from AWS Secrets Manager..."
 
 SECRET=$(aws secretsmanager get-secret-value \
-    --secret-id myapp/production/env \
+    --secret-id myapp/production/env_new \
     --region ap-south-1 \
     --query SecretString \
     --output text)
